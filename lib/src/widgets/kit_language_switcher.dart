@@ -53,7 +53,8 @@ class _KitLanguageSwitcherState extends State<KitLanguageSwitcher> {
   @override
   Widget build(BuildContext context) {
     final dropdown = DropdownButtonFormField<TranslateLanguage>(
-      value: widget.languages.contains(_selected) ? _selected : widget.languages.first,
+      initialValue:
+          widget.languages.contains(_selected) ? _selected : widget.languages.first,
       decoration: widget.decoration ??
           const InputDecoration(
             border: OutlineInputBorder(),

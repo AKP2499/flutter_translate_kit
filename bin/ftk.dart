@@ -1,8 +1,7 @@
 #!/usr/bin/env dart
 // ignore_for_file: avoid_print
 
-/// ─────────────────────────────────────────────────────────────────────────────
-/// flutter_translate_kit CLI
+/// flutter_translate_kit CLI.
 ///
 /// Activate globally:
 ///   dart pub global activate flutter_translate_kit
@@ -12,7 +11,7 @@
 ///   ftk wrap --dry-run    — Preview changes without modifying files
 ///   ftk restore           — Undo all changes (restores .bak files)
 ///   ftk stats             — Show translation stats for your project
-/// ─────────────────────────────────────────────────────────────────────────────
+library flutter_translate_kit_cli;
 
 import 'dart:io';
 import 'package:path/path.dart' as p;
@@ -171,8 +170,8 @@ void runStats() {
 // ── Wrap logic ────────────────────────────────────────────────────────────────
 (String, int) wrapTextWidgets(String content) {
   final buffer = StringBuffer();
-  int i = 0;
-  int wrapped = 0;
+  var i = 0;
+  var wrapped = 0;
 
   while (i < content.length) {
     final idx = content.indexOf('Text(', i);
