@@ -56,28 +56,31 @@ class KitLanguageChangeOverlay extends StatelessWidget {
             final changing = snapshot.data ?? false;
             if (!changing) return const SizedBox.shrink();
 
-            return ModalBarrier(
-              color: Colors.black54,
-              dismissible: false,
-              child: Center(
-                child: loadingWidget ??
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          message ?? 'Changing language...',
-                          style: const TextStyle(
+            // Full-screen dimmed barrier + centered loader
+            return Positioned.fill(
+              child: AbsorbPointer(
+                child: Container(
+                  color: Colors.black54,
+                  alignment: Alignment.center,
+                  child: loadingWidget ??
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const CircularProgressIndicator(
                             color: Colors.white,
-                            fontSize: 16,
+                            strokeWidth: 2,
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(height: 16),
+                          Text(
+                            message ?? 'Changing language...',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                ),
               ),
             );
           },
