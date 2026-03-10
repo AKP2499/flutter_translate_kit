@@ -36,6 +36,7 @@ export 'src/core/supported_languages.dart';
 export 'src/widgets/kit_text.dart';
 export 'src/widgets/kit_scope.dart';
 export 'src/widgets/kit_language_switcher.dart';
+export 'src/widgets/kit_language_change_overlay.dart';
 
 // Extensions
 export 'src/extensions/string_extensions.dart';

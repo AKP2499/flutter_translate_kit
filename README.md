@@ -49,7 +49,9 @@ void main() async {
 }
 ```
 
-### 3. Wrap your `MaterialApp` in `app.dart`
+### 3. Wrap your `MaterialApp` and add the language-change overlay
+
+Use `KitLanguageChangeOverlay` so users see a loading screen until all text has updated after switching language (avoids half-translated UI):
 
 ```dart
 import 'package:flutter_translate_kit/flutter_translate_kit.dart';
@@ -62,7 +64,9 @@ class MyApp extends StatelessWidget {
         locale: locale,
         localizationsDelegates: delegates,
         supportedLocales: KitScope.supportedLocales,
-        home: HomeScreen(),
+        home: KitLanguageChangeOverlay(
+          child: HomeScreen(),
+        ),
       ),
     );
   }
@@ -133,6 +137,14 @@ await TranslationService().setLanguageByCode('de'); // by BCP-47 code
 ```
 
 Language preference is **persisted** — survives app restarts automatically.
+
+### Loading overlay when changing language
+
+Wrap your app content with `KitLanguageChangeOverlay` (see Quick Start step 3). When the user switches language, a full-screen loading overlay is shown until all `KitText` widgets have updated, so the app never shows a mix of old and new language. You can customize the duration:
+
+```dart
+TranslationService.languageChangeLoadingDuration = Duration(milliseconds: 2000); // default: 1500
+```
 
 ### Built-in Language Switcher UI
 
