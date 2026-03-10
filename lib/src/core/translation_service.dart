@@ -45,9 +45,16 @@ class TranslationService {
   bool _initialized = false;
   bool _disposed = false;
 
-  /// Duration to keep [isLanguageChanging] true after switching language,
-  /// giving KitText widgets time to re-translate. Default: 1500ms.
-  static Duration languageChangeLoadingDuration = const Duration(milliseconds: 1500);
+  /// Number of [translate] calls currently in progress (used to hide loading only when all done).
+  int _pendingTranslations = 0;
+  Completer<void>? _languageChangeCompleter;
+
+  /// Delay after emitting new language before we start waiting for pending translations
+  /// (gives KitText widgets time to rebuild and call [translate]). Default: 350ms.
+  static Duration languageChangeSettleDuration = const Duration(milliseconds: 350);
+
+  /// Max time to wait for pending translations after a language change. Default: 10s.
+  static Duration languageChangeMaxWait = const Duration(seconds: 10);
 
   // ── Public Getters ─────────────────────────────────────────────────────────
 
@@ -114,7 +121,8 @@ class TranslationService {
 
   /// Switch the entire app to a new language.
   /// Persists across app restarts.
-  /// [isLanguageChanging] stays true until text has had time to update (see [languageChangeLoadingDuration]).
+  /// Loading stays visible until all visible [KitText] widgets have finished
+  /// translating (or [languageChangeMaxWait] is reached).
   ///
   /// ```dart
   /// await TranslationService().setLanguage(TranslateLanguage.hindi);
@@ -124,6 +132,7 @@ class TranslationService {
     if (_disposed) return;
 
     _languageChangingSubject.add(true);
+    _languageChangeCompleter = Completer<void>();
 
     try {
       _targetLanguage = language;
@@ -132,9 +141,24 @@ class TranslationService {
       _languageSubject.add(language);
       log('[TranslateKit] Language changed → ${language.bcpCode}', name: 'flutter_translate_kit');
 
-      // Keep loading state so KitText widgets can re-translate; then hide overlay
-      await Future.delayed(languageChangeLoadingDuration);
+      // Give widgets time to rebuild and call translate()
+      await Future.delayed(languageChangeSettleDuration);
+
+      if (_disposed) return;
+      if (_pendingTranslations == 0) {
+        _languageChangeCompleter?.complete();
+      }
+      final completer = _languageChangeCompleter;
+      if (completer != null && !completer.isCompleted) {
+        await completer.future.timeout(
+          languageChangeMaxWait,
+          onTimeout: () {
+            log('[TranslateKit] Language change wait timed out', name: 'flutter_translate_kit');
+          },
+        );
+      }
     } finally {
+      _languageChangeCompleter = null;
       if (!_disposed) _languageChangingSubject.add(false);
     }
   }
@@ -160,22 +184,30 @@ class TranslationService {
     if (text.trim().isEmpty) return text;
     if (_sourceLanguage == _targetLanguage) return text;
 
-    // Check cache first (safe, no native calls)
-    final cacheKey = '${_targetLanguage.bcpCode}::$text';
-    final cached = _cacheBox.get(cacheKey);
-    if (cached != null) return cached;
-
-    final translator = _translator;
-    if (translator == null) return text;
-
+    _pendingTranslations++;
     try {
-      final translated = await translator.translateText(text);
-      if (!_disposed) await _cacheBox.put(cacheKey, translated);
-      return translated;
-    } catch (e, stack) {
-      log('[TranslateKit] Translation error (returning original): $e', name: 'flutter_translate_kit');
-      log('[TranslateKit] $stack', name: 'flutter_translate_kit');
-      return text;
+      // Check cache first (safe, no native calls)
+      final cacheKey = '${_targetLanguage.bcpCode}::$text';
+      final cached = _cacheBox.get(cacheKey);
+      if (cached != null) return cached;
+
+      final translator = _translator;
+      if (translator == null) return text;
+
+      try {
+        final translated = await translator.translateText(text);
+        if (!_disposed) await _cacheBox.put(cacheKey, translated);
+        return translated;
+      } catch (e, stack) {
+        log('[TranslateKit] Translation error (returning original): $e', name: 'flutter_translate_kit');
+        log('[TranslateKit] $stack', name: 'flutter_translate_kit');
+        return text;
+      }
+    } finally {
+      _pendingTranslations--;
+      if (_pendingTranslations == 0) {
+        _languageChangeCompleter?.complete();
+      }
     }
   }
 
@@ -243,6 +275,8 @@ class TranslationService {
 
   Future<void> dispose() async {
     _disposed = true;
+    _languageChangeCompleter?.complete();
+    _languageChangeCompleter = null;
     _languageChangingSubject.add(false);
     await _translator?.close();
     _translator = null;

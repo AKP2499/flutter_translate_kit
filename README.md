@@ -140,10 +140,11 @@ Language preference is **persisted** — survives app restarts automatically.
 
 ### Loading overlay when changing language
 
-Wrap your app content with `KitLanguageChangeOverlay` (see Quick Start step 3). When the user switches language, a full-screen loading overlay is shown until all `KitText` widgets have updated, so the app never shows a mix of old and new language. You can customize the duration:
+Wrap your app content with `KitLanguageChangeOverlay` (see Quick Start step 3). When the user switches language, a full-screen loading overlay is shown **until all visible `KitText` widgets have finished translating** (or a max wait), so the app never shows a mix of old and new language. You can tune timing:
 
 ```dart
-TranslationService.languageChangeLoadingDuration = Duration(milliseconds: 2000); // default: 1500
+TranslationService.languageChangeSettleDuration = Duration(milliseconds: 400); // time for widgets to request translations (default: 350)
+TranslationService.languageChangeMaxWait = Duration(seconds: 15);              // max wait for all translations (default: 10)
 ```
 
 ### Built-in Language Switcher UI
