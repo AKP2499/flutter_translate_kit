@@ -198,7 +198,25 @@ KitText('API_KEY_abc123', translate: false) // never translated
 
 ## Supported Languages (50+)
 
-Hindi, Arabic, French, Spanish, German, Chinese, Japanese, Korean, Portuguese, Russian, Italian, Dutch, Polish, Turkish, Ukrainian, Thai, Vietnamese, Indonesian, Malay, Bengali, Gujarati, Marathi, Tamil, Telugu, Kannada, Urdu, Persian, Hebrew, and more.
+`flutter_translate_kit` is built on **Google ML Kit on-device translation**, so you get a wide range of languages out of the box:
+
+- **South Asian**: Hindi, Urdu, Bengali, Punjabi, Gujarati, Marathi, Tamil, Telugu, Kannada, Malayalam
+- **Middle‑East & RTL**: Arabic, Persian (Farsi), Hebrew
+- **European**: English, French, Spanish, German, Italian, Portuguese, Dutch, Polish, Turkish, Ukrainian, Russian, Greek, Czech, Slovak, Romanian, Hungarian, Swedish, Norwegian, Danish, Finnish
+- **East Asian**: Chinese (Simplified & Traditional), Japanese, Korean
+- **South‑East Asian**: Thai, Vietnamese, Indonesian, Malay, Filipino
+- **African & others**: Afrikaans, Swahili, and more supported by ML Kit
+
+You can set any of these via `TranslateLanguage`:
+
+```dart
+await TranslationService().setLanguage(TranslateLanguage.hindi);
+await TranslationService().setLanguage(TranslateLanguage.urdu);
+await TranslationService().setLanguage(TranslateLanguage.bengali);
+await TranslationService().setLanguage(TranslateLanguage.punjabi);
+await TranslationService().setLanguage(TranslateLanguage.tamil);
+// ...and many more
+```
 
 ---
 
