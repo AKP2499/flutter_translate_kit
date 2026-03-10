@@ -24,7 +24,7 @@ import '../core/translation_service.dart';
 /// ```
 ///
 /// When the user changes language (e.g. via [KitLanguageSwitcher]), the overlay
-/// appears until [TranslationService.languageChangeLoadingDuration] elapses.
+/// stays until all visible [KitText] translations finish (or [TranslationService.languageChangeMaxWait]).
 /// ─────────────────────────────────────────────────────────────────────────────
 class KitLanguageChangeOverlay extends StatelessWidget {
   /// The app content to show under the overlay.
