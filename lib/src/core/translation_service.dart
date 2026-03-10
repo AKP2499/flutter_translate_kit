@@ -35,17 +35,32 @@ class TranslationService {
   final BehaviorSubject<TranslateLanguage> _languageSubject =
   BehaviorSubject<TranslateLanguage>.seeded(TranslateLanguage.english);
 
+  final BehaviorSubject<bool> _languageChangingSubject =
+  BehaviorSubject<bool>.seeded(false);
+
   OnDeviceTranslator? _translator;
   TranslateLanguage _sourceLanguage = TranslateLanguage.english;
   TranslateLanguage _targetLanguage = TranslateLanguage.english;
 
   bool _initialized = false;
+  bool _disposed = false;
+
+  /// Duration to keep [isLanguageChanging] true after switching language,
+  /// giving KitText widgets time to re-translate. Default: 1500ms.
+  static Duration languageChangeLoadingDuration = const Duration(milliseconds: 1500);
 
   // ── Public Getters ─────────────────────────────────────────────────────────
 
   /// Stream that emits whenever the language changes.
   /// Widgets listen to this to rebuild.
   Stream<TranslateLanguage> get languageStream => _languageSubject.stream;
+
+  /// True while language is switching and the app is still updating text.
+  /// Use with [KitLanguageChangeOverlay] to show a loading screen.
+  bool get isLanguageChanging => _languageChangingSubject.value;
+
+  /// Stream that emits when [isLanguageChanging] changes.
+  Stream<bool> get languageChangingStream => _languageChangingSubject.stream;
 
   /// Current active language
   TranslateLanguage get currentLanguage => _languageSubject.value;
@@ -97,21 +112,31 @@ class TranslationService {
 
   // ── Language Switching ─────────────────────────────────────────────────────
 
-  /// Switch the entire app to a new language instantly.
+  /// Switch the entire app to a new language.
   /// Persists across app restarts.
+  /// [isLanguageChanging] stays true until text has had time to update (see [languageChangeLoadingDuration]).
   ///
   /// ```dart
   /// await TranslationService().setLanguage(TranslateLanguage.hindi);
   /// ```
   Future<void> setLanguage(TranslateLanguage language) async {
     if (language == _targetLanguage) return;
+    if (_disposed) return;
 
-    _targetLanguage = language;
-    await _settingsBox.put(_langKey, language.bcpCode);
-    await _initTranslator();
-    _languageSubject.add(language);
+    _languageChangingSubject.add(true);
 
-    log('[TranslateKit] Language changed → ${language.bcpCode}', name: 'flutter_translate_kit');
+    try {
+      _targetLanguage = language;
+      await _settingsBox.put(_langKey, language.bcpCode);
+      await _initTranslator();
+      _languageSubject.add(language);
+      log('[TranslateKit] Language changed → ${language.bcpCode}', name: 'flutter_translate_kit');
+
+      // Keep loading state so KitText widgets can re-translate; then hide overlay
+      await Future.delayed(languageChangeLoadingDuration);
+    } finally {
+      if (!_disposed) _languageChangingSubject.add(false);
+    }
   }
 
   /// Convenience: set language by BCP-47 code string (e.g. 'hi', 'ar', 'fr')
@@ -131,21 +156,25 @@ class TranslationService {
   ///
   /// Results are cached in Hive — same string is never translated twice.
   Future<String> translate(String text) async {
-    if (!_initialized) return text;
+    if (!_initialized || _disposed) return text;
     if (text.trim().isEmpty) return text;
     if (_sourceLanguage == _targetLanguage) return text;
 
-    // Check cache first
+    // Check cache first (safe, no native calls)
     final cacheKey = '${_targetLanguage.bcpCode}::$text';
     final cached = _cacheBox.get(cacheKey);
     if (cached != null) return cached;
 
+    final translator = _translator;
+    if (translator == null) return text;
+
     try {
-      final translated = await _translator?.translateText(text) ?? text;
-      await _cacheBox.put(cacheKey, translated);
+      final translated = await translator.translateText(text);
+      if (!_disposed) await _cacheBox.put(cacheKey, translated);
       return translated;
-    } catch (e) {
-      log('[TranslateKit] Translation error: $e', name: 'flutter_translate_kit');
+    } catch (e, stack) {
+      log('[TranslateKit] Translation error (returning original): $e', name: 'flutter_translate_kit');
+      log('[TranslateKit] $stack', name: 'flutter_translate_kit');
       return text;
     }
   }
@@ -204,7 +233,6 @@ class TranslationService {
   // ── Private ────────────────────────────────────────────────────────────────
 
   Future<void> _initTranslator() async {
-    await _translator?.close();
     if (_sourceLanguage == _targetLanguage) return;
 
     _translator = OnDeviceTranslator(
@@ -214,7 +242,11 @@ class TranslationService {
   }
 
   Future<void> dispose() async {
+    _disposed = true;
+    _languageChangingSubject.add(false);
     await _translator?.close();
+    _translator = null;
     await _languageSubject.close();
+    await _languageChangingSubject.close();
   }
 }

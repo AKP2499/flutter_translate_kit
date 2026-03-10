@@ -87,19 +87,21 @@ class _KitTextState extends State<KitText> {
 
   Future<void> _translate() async {
     if (!widget.translate) {
-      setState(() => _displayText = widget.data);
+      if (mounted) setState(() => _displayText = widget.data);
       return;
     }
 
     final service = TranslationService.instance;
     if (!service.isInitialized) {
-      setState(() => _displayText = widget.data);
+      if (mounted) setState(() => _displayText = widget.data);
       return;
     }
 
-    final translated = await service.translate(widget.data);
-    if (mounted) {
-      setState(() => _displayText = translated);
+    try {
+      final translated = await service.translate(widget.data);
+      if (mounted) setState(() => _displayText = translated);
+    } catch (_) {
+      if (mounted) setState(() => _displayText = widget.data);
     }
   }
 
